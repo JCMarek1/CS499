@@ -7,6 +7,8 @@ import { Trip } from "../models/trip";
 
 import { Router } from "@angular/router";
 
+import { AuthenticationService } from "../services/authentication.service";
+
 @Component({
     selector: 'app-trip-listing',
     standalone: true,
@@ -23,7 +25,8 @@ export class TripListingComponent implements OnInit {
 
     constructor(
         private tripDataService: TripDataService,
-        private router: Router
+        private router: Router,
+        private authenricationService: AuthenticationService
     ) {
         console.log('trip-listing constructor');
     }
@@ -34,6 +37,10 @@ export class TripListingComponent implements OnInit {
                 next: (trips: Trip[]) => this.trips = trips,
                 error: (error) => console.error('Error loading trips:', error)
             });
+    }
+
+    public isLoggedIn(): boolean{
+        return this.authenricationService.isLoggedIn();
     }
 
     public addTrip(): void {
