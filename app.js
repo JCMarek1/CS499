@@ -11,62 +11,108 @@ const passport = require('passport');
 require('./app_api/models/db');
 require('./app_api/config/passport');
 
-const indexRouter = require('./app_server/routes/index');
-const usersRouter = require('./app_server/routes/users');
+// Route imports
 const travelRouter = require('./app_server/routes/travel');
-const apiRouter = require('./app_api/routes/index');
+const apiRoutes = require('./app_api/routes/index');
+const tripsRouter = require('./app_server/routes/trips');
 
 const app = express();
 
-// View engine setup
-app.set('views', path.join(__dirname, './app_server', 'views'));
+// View engine setup (FIXED TYPO IN __dirname)
+app.set('views', path.join(__dirname, 'app_server', 'views'));
 app.set('view engine', 'hbs');
-hbs.registerPartials(__dirname + '/app_server/views/partials');
+hbs.registerPartials(
+  path.join(__dirname, 'app_server', 'views', 'partials'),
+  (err) => {
+    if(err) console.error('Partials registration error:', err);
+    else console.log('Partials registered successfully');
+  }
+);
 
-// Middleware - Fixed syntax errors
+// Middleware
 app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: false })); // Fixed missing parenthesis
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(passport.initialize());
 
-// Enhanced CORS Configuration
-app.use('/api', (req, res, next) => {
+app.get('/travel', (req, res) => {
+  res.render('travel', {
+    title: 'Travel Packages',
+    trips: trips,
+    layout: 'layout'
+  });
+});
+
+app.get('/trips/:code', (req, res) => {
+  const tripCode = req.params.code;
+  const trip = trips.find(t => t.code === tripCode);
+  
+  if (!trip) {
+    return res.status(404).send('Trip not found');
+  }
+
+  res.render('trip-details', {
+    title: `${trip.name} Details`,
+    trip: trip,
+    layout: 'layout'
+  });
+});
+
+// Static files
+app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
+
+// CORS Configuration
+app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:4200');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'); // Added OPTIONS
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  req.method === 'OPTIONS' ? res.sendStatus(200) : next();
 });
 
-// Routes
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
-app.use('/travel', travelRouter);
-app.use('/api', apiRouter);
+// Main routes
+const mainRoutes = [
+  { path: '/', template: 'index', title: 'Home' },
+  { path: '/rooms', template: 'rooms', title: 'Rooms' },
+  { path: '/meals', template: 'meals', title: 'Meals' },
+  { path: '/news', template: 'news', title: 'News' },
+  { path: '/about', template: 'about', title: 'About' },
+  { path: '/contact', template: 'contact', title: 'Contact' }
+];
 
-// Error handlers - Fixed JSON syntax and bracket structure
+mainRoutes.forEach(route => {
+  app.get(route.path, (req, res) => res.render(route.template, {
+    title: route.title,
+    layout: 'layout'
+  }));
+});
+
+// Other routes
+app.use('/trips', tripsRouter);
+app.use('/api', apiRoutes);
+
+// Error handlers
+app.use((req, res, next) => next(createError(404)));
+
 app.use((err, req, res, next) => {
-  if (err.name === 'UnauthorizedError') {
-    res.status(401).json({
-      message: 'Authorization failed',
-      error: `${err.name}: ${err.message}`
-    });
-  } else {
-    next(err);
-  }
+  const errorContext = {
+    title: `Error ${err.status || 500}`,
+    status: err.status || 500,
+    message: err.message,
+    stack: req.app.get('env') === 'development' ? err.stack : undefined
+  };
+  console.error(`Error ${errorContext.status}: ${errorContext.message}`);
+  res.status(errorContext.status).render('error', errorContext);
 });
 
-app.use((req, res, next) => {
-  next(createError(404));
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
 });
 
-app.use((err, req, res, next) => {
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-  res.status(err.status || 500);
-  res.render('error');
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
 });
 
 module.exports = app;

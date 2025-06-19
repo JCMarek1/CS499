@@ -1,6 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router'; // Corrected import
+import { Router } from '@angular/router';
 import { Trip } from '../models/trip';
 import { AuthenticationService } from '../services/authentication.service';
 
@@ -13,7 +13,7 @@ import { AuthenticationService } from '../services/authentication.service';
 })
 export class TripCardComponent implements OnInit {
 
-  @Input() trip!: Trip; // Strongly type with Trip interface
+  @Input() trip!: Trip;
 
   constructor(
     private router: Router,

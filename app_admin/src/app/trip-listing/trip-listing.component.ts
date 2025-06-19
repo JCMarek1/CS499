@@ -1,49 +1,63 @@
 import { Component, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { TripCardComponent } from "../trip-card/trip-card.component";
-
 import { TripDataService } from "../services/trip-data.service";
 import { Trip } from "../models/trip";
-
-import { Router } from "@angular/router";
-
+import { Router, RouterModule } from "@angular/router";
 import { AuthenticationService } from "../services/authentication.service";
 
 @Component({
     selector: 'app-trip-listing',
     standalone: true,
-    imports: [CommonModule, TripCardComponent],
+    imports: [CommonModule, TripCardComponent, RouterModule],
     templateUrl: './trip-listing.component.html',
-    styleUrl: './trip-listing.component.css', 
-    providers: [TripDataService]
+    styleUrls: ['./trip-listing.component.css']
 })
-
 export class TripListingComponent implements OnInit {
-
-    trips!: Trip[]
+    trips: Trip[] = [];
     message: string = '';
+    loading: boolean = true;
+    debug: boolean = true;  // Toggle for debug outputs
 
     constructor(
         private tripDataService: TripDataService,
         private router: Router,
-        private authenricationService: AuthenticationService
+        private authenticationService: AuthenticationService
     ) {
-        console.log('trip-listing constructor');
+        if (this.debug) console.log('TripListingComponent initialized');
     }
 
     ngOnInit(): void {
-        this.tripDataService.getTrips()
-            .subscribe({
-                next: (trips: Trip[]) => this.trips = trips,
-                error: (error) => console.error('Error loading trips:', error)
-            });
+        if (this.debug) console.log('Starting trip data load...');
+        
+        this.tripDataService.getTrips().subscribe({
+            next: (trips: Trip[]) => {
+                if (this.debug) {
+                    console.log('Trips loaded:', trips);
+                    console.log('Trip count:', trips.length);
+                    console.log('First trip:', trips[0]);
+                }
+                
+                this.trips = trips;
+                this.loading = false;
+            },
+            error: (error) => {
+                console.error('Error loading trips:', error);
+                this.message = 'Failed to load trips. Please try again later.';
+                this.loading = false;
+                if (this.debug) console.log('Error state activated');
+            }
+        });
     }
 
-    public isLoggedIn(): boolean{
-        return this.authenricationService.isLoggedIn();
+    public isLoggedIn(): boolean {
+        const loggedIn = this.authenticationService.isLoggedIn();
+        if (this.debug) console.log('Login status:', loggedIn);
+        return loggedIn;
     }
 
     public addTrip(): void {
-        this.router.navigate(['/add-trip']); 
+        if (this.debug) console.log('Navigating to add-trip');
+        this.router.navigate(['/add-trip']);
     }
 }
